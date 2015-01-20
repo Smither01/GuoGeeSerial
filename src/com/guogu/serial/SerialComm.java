@@ -193,15 +193,15 @@ public class SerialComm {
 							
 							ISmartFrame ReadFrame = null;
 							ReadFrame = new ISmartFrame(byteDataTamp);
-							if(byteDataTamp[32] != 0 && byteDataTamp[33] != 0)//SEQ = 0 为APP自动查询返回值，只做更新出来，不发送
+							if(byteDataTamp[32] != 0 && byteDataTamp[33] != 0)//SEQ = 0 涓篈PP鑷姩鏌ヨ杩斿洖鍊硷紝鍙仛鏇存柊鍑烘潵锛屼笉鍙戦�
 							{
-								Log.v("SerialComm","手机查询返回");
+								Log.v("SerialComm","鎵嬫満鏌ヨ杩斿洖");
 								Log.v("LZP", "Data Send:"+str);
 								Protocol.getInstance().DealSerialFrame(ReadFrame);
 							}
 							try{
-								Log.v("SerialComm", "查询结果!!!");
-								addQueryRequest(ReadFrame);//查询若是查询结果则~
+								Log.v("SerialComm", "鏌ヨ缁撴灉!!!");
+								addQueryRequest(ReadFrame);//鏌ヨ鑻ユ槸鏌ヨ缁撴灉鍒檦
 								Log.v("LZP", "Data Send:"+str);
 							}catch(Exception e)
 							{
@@ -215,11 +215,11 @@ public class SerialComm {
 				}	
 	}
 	
-	// 查询某个节点状态,若原不存在，则插入List中，若存在则更新
-		public void addQueryRequest(ISmartFrame frame) {// 地址2个字节 1个字节的类型 1个字节的状态
+	// 鏌ヨ鏌愪釜鑺傜偣鐘舵�,鑻ュ師涓嶅瓨鍦紝鍒欐彃鍏ist涓紝鑻ュ瓨鍦ㄥ垯鏇存柊
+		public void addQueryRequest(ISmartFrame frame) {// 鍦板潃2涓瓧鑺�1涓瓧鑺傜殑绫诲瀷 1涓瓧鑺傜殑鐘舵�
 
 			
-			// 1个字节的时间
+			// 1涓瓧鑺傜殑鏃堕棿
 			boolean hasFlag = true;
 			SmartNode node = new SmartNode();
 			switch (frame.GetDev()) {
@@ -244,7 +244,7 @@ public class SerialComm {
 			case SmartNode.PROTOCOL_TYPE_CONTROLSOCKET:
 				SmartNode.GetItemFromControlSocket(frame, node);
 				break;
-			case SmartNode.PROTOCOL_TYPE_GATEWAY:/* 网关不提取节点信息 */
+			case SmartNode.PROTOCOL_TYPE_GATEWAY:/* 缃戝叧涓嶆彁鍙栬妭鐐逛俊鎭�*/
 				return;
 			default:
 				SmartNode.GetItemFromAny(frame, node);
@@ -253,7 +253,7 @@ public class SerialComm {
 			if(nodeStatusList.size() > 0){
 				for (SmartNode nodeTemp : nodeStatusList) {
 					if(Arrays.equals(frame.GetSourceMac(), nodeTemp.getMac())){
-						//若存在，更新状态与时间
+						//鑻ュ瓨鍦紝鏇存柊鐘舵�涓庢椂闂�
 						nodeTemp.setStatus(frame.GetData()[0]);
 						nodeTemp.setTime(System.currentTimeMillis());
 						hasFlag = false;
