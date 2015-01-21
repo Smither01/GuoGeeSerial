@@ -132,7 +132,7 @@ public class NetComm
 	        	}
 	        	
 	        	ISmartFrame RecvFrame = new ISmartFrame(RecvPacket);
-	        	RecvFrame.FillIP( Util.Byte2Int(RecvPacket.getAddress().getAddress(), 0) );
+	   //     	RecvFrame.FillIP( Util.Byte2Int(RecvPacket.getAddress().getAddress(), 0) );
 	        	RecvFrame.FillPort((short) RecvPacket.getPort());
 	        	
 	    //		System.out.println(StrHex);

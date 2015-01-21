@@ -45,7 +45,12 @@ public class SerialComm {
 					if (mInputStream == null) return;
 					size = mInputStream.read(buffer);
 					if (size > 0) {
-							onDataReceived(buffer, size);					
+						String str="";
+						for (int i = 0; i < size; i++) {
+							str += Integer.toHexString(buffer[i] & 0xff)+" ";
+						}
+						Log.v("ReadThread", "size:"+size+" "+str.toUpperCase());
+						onDataReceived(buffer, size);					
 					}
 				} catch (IOException e) {
 					e.printStackTrace();
@@ -94,8 +99,6 @@ public class SerialComm {
 			Log.v("SerialComm", "WriteThread Created");
 			while (true) {	
 				if (falg) {
-					
-	
 				byte[] arr = protocol.getFirstDataByte();
 				if (arr.length > 0) {
 					try {
@@ -130,84 +133,80 @@ public class SerialComm {
 
 	private int receivedSize = 0;
 	private byte[] byteDataTamp;
-	private byte[] dataLength = new byte[2];
 	private byte[] dataMaxLength = new byte[500];
-	private short packageLength = 0;
+	
+	private boolean readyNewData = false;
 	protected void onDataReceived(final byte[] buffer, final int size) {
 				try {
-					if (receivedSize < 500) {
-						
-						String test="";
-						for (int i = 0; i < buffer.length; i++) {
-							test += Integer.toHexString(buffer[i] & 0xff)+" ";
+					if (!readyNewData) {
+						for (int i = 0; i < size; i++) {
+							if (0x00aa == (buffer[i] & 0xff)) {//若出现帧头AA则设置接收状态为开始
+								Log.v("onDataReceived", "Start New");
+								readyNewData = true;
+								System.arraycopy(buffer,i,dataMaxLength,0,size-i);
+								receivedSize = size-i;//已经接收到多少Byte
+							}
 						}
-			//			Log.v("LZP", "Data Receive:"+test);						
+					}else {
 						System.arraycopy(buffer,0,dataMaxLength,receivedSize,size);
-						receivedSize += size; 
-						if (receivedSize > 546) {
-							packageLength = 0;
-							dataLength[0] =0;
-							dataLength[1] = 0;
-							return;
-						}
-						
-				//		Log.v("SerialComm", "receivedSize += size:"+receivedSize);
-					/*	String str1="";
-						for (int i = 0; i < dataMaxLength.length; i++) {
-							str1 += Integer.toHexString(dataMaxLength[i] & 0xff)+" ";
-						}
-						Log.v("LZP", "dataMaxLength:"+str1);*/
+						receivedSize += size;
 						if (receivedSize > 3) {
 							int nLen = (dataMaxLength[2] & 0xff) << 8 | dataMaxLength[3] & 0xff;
-				        	if(0x00aa != (dataMaxLength[0] & 0xff) || 0x55 != (dataMaxLength[1] & 0xff) || nLen > 546)
-				        	{
-				        		System.out.println(0xaa + " " + 0x55);
-				        		System.out.println("No Heda " + (dataMaxLength[0] & 0xff) + " " + (dataMaxLength[1] & 0xff) + " " + nLen);
-				        		packageLength = 0;
-								dataLength[0] =0;
-								dataLength[1] = 0;
+							if(0x00aa != (dataMaxLength[0] & 0xff) || 0x55 != (dataMaxLength[1] & 0xff) || nLen > 546)
+							{
+								Log.v("onDataReceived", "Head Wrong or nLen:"+nLen);
+								readyNewData = false;
 								return;
-				        	}
-				        	
-							System.arraycopy(dataMaxLength,2,dataLength,0,2);
-							packageLength = Util.Byte2Short(dataLength, 0);
-						}
-						if ((receivedSize > (packageLength-1)) && receivedSize != 0 && packageLength != 0) {
-							byteDataTamp = new byte[packageLength];
-							System.arraycopy(dataMaxLength,0,byteDataTamp,0,byteDataTamp.length);
-							if (receivedSize > (packageLength - 1)) {
-								
-								System.arraycopy(dataMaxLength,packageLength,dataMaxLength,0,(receivedSize - byteDataTamp.length));
-								
-								receivedSize = receivedSize - byteDataTamp.length;
-								packageLength = 0;
-								dataLength[0] =0;
-								dataLength[1] = 0;
-								Log.v("SerialComm","After receivedSize:"+receivedSize);
-							}
-							//Send
-							String str="";
-							for (int i = 0; i < byteDataTamp.length; i++) {
-								str += Integer.toHexString(byteDataTamp[i] & 0xff)+" ";
 							}
 							
-							ISmartFrame ReadFrame = null;
-							ReadFrame = new ISmartFrame(byteDataTamp);
-							if(byteDataTamp[32] != 0 && byteDataTamp[33] != 0)//SEQ = 0 涓篈PP鑷姩鏌ヨ杩斿洖鍊硷紝鍙仛鏇存柊鍑烘潵锛屼笉鍙戦�
-							{
-								Log.v("SerialComm","鎵嬫満鏌ヨ杩斿洖");
-								Log.v("LZP", "Data Send:"+str);
-								Protocol.getInstance().DealSerialFrame(ReadFrame);
-							}
-							try{
-								Log.v("SerialComm", "鏌ヨ缁撴灉!!!");
-								addQueryRequest(ReadFrame);//鏌ヨ鑻ユ槸鏌ヨ缁撴灉鍒檦
-								Log.v("LZP", "Data Send:"+str);
-							}catch(Exception e)
-							{
-								Log.v("SerialComm", "addQueryRequest:"+e.toString());
+							if ((receivedSize > (nLen-1)) && receivedSize != 0 && nLen != 0) {
+								byteDataTamp = new byte[nLen];
+								System.arraycopy(dataMaxLength,0,byteDataTamp,0,nLen);
+								
+								byte[] dataMaxLengthTemp = null;
+								int startCopyPosition = 0;
+								for (int i = nLen; i < receivedSize; i++) {
+									if (0x00aa == (dataMaxLength[i] & 0xff)) {
+										startCopyPosition = i;
+										dataMaxLengthTemp = new byte[500];
+										System.arraycopy(dataMaxLength,i,dataMaxLengthTemp,0,(receivedSize - i));
+									}
+								}
+								if (dataMaxLengthTemp != null && startCopyPosition != 0) {
+									System.arraycopy(dataMaxLengthTemp,0,dataMaxLength,0,(receivedSize - startCopyPosition));
+									readyNewData = true;
+									receivedSize = receivedSize - startCopyPosition;
+									Log.v("onDataReceived", "Start Again");
+								}else {
+									readyNewData = false;
+									Log.v("onDataReceived", "Set Start New");
+								}		
+								
+			
+								//Send
+								String str="";
+								for (int i = 0; i < byteDataTamp.length; i++) {
+									str += Integer.toHexString(byteDataTamp[i] & 0xff)+" ";
+								}
+								ISmartFrame ReadFrame = null;
+								ReadFrame = new ISmartFrame(byteDataTamp);
+								if(byteDataTamp[32] != 0 && byteDataTamp[33] != 0)//SEQ = 0 为APP自动查询返回值，只做更新出来，不发送
+								{
+									Log.v("SerialComm","手机查询返回");
+									Log.v("LZP", "Data Send:"+str);
+									Protocol.getInstance().DealSerialFrame(ReadFrame);
+								}
+								try{
+									Log.v("SerialComm", "查询结果!!!");
+									addQueryRequest(ReadFrame);//查询若是查询结果则~
+									Log.v("LZP", "Data Send:"+str);
+								}catch(Exception e)
+								{
+									Log.v("SerialComm", "addQueryRequest:"+e.toString());
+								}
 							}
 						}
+						
 					}
 				} catch (Exception e) {
 					// TODO: handle exception
@@ -215,11 +214,11 @@ public class SerialComm {
 				}	
 	}
 	
-	// 鏌ヨ鏌愪釜鑺傜偣鐘舵�,鑻ュ師涓嶅瓨鍦紝鍒欐彃鍏ist涓紝鑻ュ瓨鍦ㄥ垯鏇存柊
-		public void addQueryRequest(ISmartFrame frame) {// 鍦板潃2涓瓧鑺�1涓瓧鑺傜殑绫诲瀷 1涓瓧鑺傜殑鐘舵�
+	// 查询某个节点状态,若原不存在，则插入List中，若存在则更新
+		public void addQueryRequest(ISmartFrame frame) {// 地址2个字节 1个字节的类型 1个字节的状态
 
 			
-			// 1涓瓧鑺傜殑鏃堕棿
+			// 1个字节的时间
 			boolean hasFlag = true;
 			SmartNode node = new SmartNode();
 			switch (frame.GetDev()) {
@@ -244,7 +243,7 @@ public class SerialComm {
 			case SmartNode.PROTOCOL_TYPE_CONTROLSOCKET:
 				SmartNode.GetItemFromControlSocket(frame, node);
 				break;
-			case SmartNode.PROTOCOL_TYPE_GATEWAY:/* 缃戝叧涓嶆彁鍙栬妭鐐逛俊鎭�*/
+			case SmartNode.PROTOCOL_TYPE_GATEWAY:/* 网关不提取节点信息 */
 				return;
 			default:
 				SmartNode.GetItemFromAny(frame, node);
@@ -253,7 +252,7 @@ public class SerialComm {
 			if(nodeStatusList.size() > 0){
 				for (SmartNode nodeTemp : nodeStatusList) {
 					if(Arrays.equals(frame.GetSourceMac(), nodeTemp.getMac())){
-						//鑻ュ瓨鍦紝鏇存柊鐘舵�涓庢椂闂�
+						//若存在，更新状态与时间
 						nodeTemp.setStatus(frame.GetData()[0]);
 						nodeTemp.setTime(System.currentTimeMillis());
 						hasFlag = false;
