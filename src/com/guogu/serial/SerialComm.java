@@ -210,6 +210,7 @@ public class SerialComm {
 					}
 				} catch (Exception e) {
 					// TODO: handle exception
+					readyNewData = false;
 					Log.v("SerialComm", "Exception:"+e.toString());
 				}	
 	}
