@@ -124,7 +124,7 @@ public class Protocol {
 				{
 					ISmartFrame GetGateWayFrame = PackGetGatewayMac();
 					Log.v("Protocol", "From ThreadKeepAlive Write In to USB");
-			//		dataPackage.add(GetGateWayFrame.GetStrData());
+					dataPackage.add(GetGateWayFrame.GetStrData());
 					continue;
 				}
 				while (m_ThreadAliveFlag && null != m_GatewayMac) {
